@@ -1,0 +1,150 @@
+#Import Necessary packages
+#import necessary packages
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn import preprocessing 
+import pickle
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score,mean_squared_error,mean_absolute_error
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor
+from datetime import date
+from datetime import datetime
+import re
+import streamlit as st
+
+#Load models
+scaler = pd.read_pickle("standard_scalar.pkl")
+decision = pd.read_pickle("decision_tree.pkl")
+
+#Label Encoding user input
+def label_encode(input_type,user_input):
+    if input_type == 'town':
+        values = {'Ang Mo Kio': 0, 'Bedok': 1, 'Bishan': 2, 'Bukit Batok': 3, 'Bukit Merah': 4, 'Bukit Panjang': 5, 'Bukit Timah': 6, 'Central Area': 7, 'Choa Chu Kang': 8, 'Clementi': 9, 'Geylang': 10, 'Hougang': 11, 'Jurong East': 12, 'Jurong West': 13, 'Kallang/Whampoa': 14, 'Lim Chu Kang': 15, 'Marine Parade': 16, 'Pasir Ris': 17, 'Punggol': 18, 'Queenstown': 19, 'Sembawang': 20, 'Sengkang': 21, 'Serangoon': 22, 'Tampines': 23, 'Toa Payoh': 24, 'Woodlands': 25, 'Yishun': 26}
+        res = values[user_input]
+    if input_type == 'flat_type':
+        values = {'1 Room': 0, '2 Room': 1, '3 Room': 2, '4 Room': 3, '5 Room': 4, 'Executive': 5, 'Multi Generation': 6}
+        res = values[user_input]
+    if input_type == 'storey':
+        values = {'01 To 03': 0, '01 To 05': 1, '04 To 06': 2, '06 To 10': 3, '07 To 09': 4, '10 To 12': 5, '11 To 15': 6, '13 To 15': 7, '16 To 18': 8, '16 To 20': 9, '19 To 21': 10, '21 To 25': 11, '22 To 24': 12, '25 To 27': 13, '26 To 30': 14, '28 To 30': 15, '31 To 33': 16, '31 To 35': 17, '34 To 36': 18, '36 To 40': 19, '37 To 39': 20, '40 To 42': 21, '43 To 45': 22, '46 To 48': 23, '49 To 51': 24}
+        res = values[user_input]
+    if input_type == 'flatmodel':
+        values = {'2-Room': 0, '3Gen': 1, 'Adjoined Flat': 2, 'Apartment': 3, 'Dbss': 4, 'Improved': 5, 'Improved-Maisonette': 6, 'Maisonette': 7, 'Model A': 8, 'Model A-Maisonette': 9, 'Model A2': 10, 'Multi Generation': 11, 'New Generation': 12, 'Premium Apartment': 13, 'Premium Apartment Loft': 14, 'Premium Maisonette': 15, 'Simplified': 16, 'Standard': 17, 'Terrace': 18, 'Type S1': 19, 'Type S2': 20}
+        res = values[user_input]
+    if input_type == 'street':
+        values = {'Admiralty Dr': 0, 'Admiralty Link': 1, 'Ah Hood Rd': 2, 'Alexandra Rd': 3, 'Aljunied Ave 2': 4, 'Aljunied Cres': 5, 'Aljunied Rd': 6, 'Anchorvale Cres': 7, 'Anchorvale Dr': 8, 'Anchorvale Lane': 9, 'Anchorvale Link': 10, 'Anchorvale Rd': 11, 'Anchorvale St': 12, 'Ang Mo Kio Ave 1': 13, 'Ang Mo Kio Ave 10': 14, 'Ang Mo Kio Ave 2': 15, 'Ang Mo Kio Ave 3': 16, 'Ang Mo Kio Ave 4': 17, 'Ang Mo Kio Ave 5': 18, 'Ang Mo Kio Ave 6': 19, 'Ang Mo Kio Ave 8': 20, 'Ang Mo Kio Ave 9': 21, 'Ang Mo Kio St 11': 22, 'Ang Mo Kio St 21': 23, 'Ang Mo Kio St 31': 24, 'Ang Mo Kio St 32': 25, 'Ang Mo Kio St 44': 26, 'Ang Mo Kio St 51': 27, 'Ang Mo Kio St 52': 28, 'Ang Mo Kio St 61': 29, 'Bain St': 30, 'Balam Rd': 31, 'Bangkit Rd': 32, 'Beach Rd': 33, 'Bedok Ctrl': 34, 'Bedok Nth Ave 1': 35, 'Bedok Nth Ave 2': 36, 'Bedok Nth Ave 3': 37, 'Bedok Nth Ave 4': 38, 'Bedok Nth Rd': 39, 'Bedok Nth St 1': 40, 'Bedok Nth St 2': 41, 'Bedok Nth St 3': 42, 'Bedok Nth St 4': 43, 'Bedok Reservoir Cres': 44, 'Bedok Reservoir Rd': 45, 'Bedok Reservoir View': 46, 'Bedok Sth Ave 1': 47, 'Bedok Sth Ave 2': 48, 'Bedok Sth Ave 3': 49, 'Bedok Sth Rd': 50, 'Bendemeer Rd': 51, 'Beo Cres': 52, 'Bishan St 11': 53, 'Bishan St 12': 54, 'Bishan St 13': 55, 'Bishan St 22': 56, 'Bishan St 23': 57, 'Bishan St 24': 58, 'Boon Keng Rd': 59, 'Boon Lay Ave': 60, 'Boon Lay Dr': 61, 'Boon Lay Pl': 62, 'Boon Tiong Rd': 63, 'Bright Hill Dr': 64, 'Bt Batok Ctrl': 65, 'Bt Batok East Ave 3': 66, 'Bt Batok East Ave 4': 67, 'Bt Batok East Ave 5': 68, 'Bt Batok East Ave 6': 69, 'Bt Batok St 11': 70, 'Bt Batok St 21': 71, 'Bt Batok St 22': 72, 'Bt Batok St 24': 73, 'Bt Batok St 25': 74, 'Bt Batok St 31': 75, 'Bt Batok St 32': 76, 'Bt Batok St 33': 77, 'Bt Batok St 34': 78, 'Bt Batok St 51': 79, 'Bt Batok St 52': 80, 'Bt Batok West Ave 2': 81, 'Bt Batok West Ave 4': 82, 'Bt Batok West Ave 5': 83, 'Bt Batok West Ave 6': 84, 'Bt Batok West Ave 7': 85, 'Bt Batok West Ave 8': 86, 'Bt Batok West Ave 9': 87, 'Bt Merah Ctrl': 88, 'Bt Merah Lane 1': 89, 'Bt Merah View': 90, 'Bt Panjang Ring Rd': 91, 'Bt Purmei Rd': 92, 'Buangkok Cres': 93, 'Buangkok Green': 94, 'Buangkok Link': 95, 'Buangkok Sth Farmway 1': 96, 'Buffalo Rd': 97, "C'Wealth Ave": 98, "C'Wealth Ave West": 99, "C'Wealth Cl": 100, "C'Wealth Cres": 101, "C'Wealth Dr": 102, 'Cambridge Rd': 103, 'Canberra Cres': 104, 'Canberra Link': 105, 'Canberra Rd': 106, 'Canberra St': 107, 'Canberra Walk': 108, 'Cantonment Cl': 109, 'Cantonment Rd': 110, 'Cashew Rd': 111, 'Cassia Cres': 112, 'Chai Chee Ave': 113, 'Chai Chee Dr': 114, 'Chai Chee Rd': 115, 'Chai Chee St': 116, 'Chander Rd': 117, 'Changi Village Rd': 118, 'Chin Swee Rd': 119, 'Choa Chu Kang Ave 1': 120, 'Choa Chu Kang Ave 2': 121, 'Choa Chu Kang Ave 3': 122, 'Choa Chu Kang Ave 4': 123, 'Choa Chu Kang Ave 5': 124, 'Choa Chu Kang Ave 7': 125, 'Choa Chu Kang Cres': 126, 'Choa Chu Kang Ctrl': 127, 'Choa Chu Kang Dr': 128, 'Choa Chu Kang Loop': 129, 'Choa Chu Kang Nth 5': 130, 'Choa Chu Kang Nth 6': 131, 'Choa Chu Kang Nth 7': 132, 'Choa Chu Kang St 51': 133, 'Choa Chu Kang St 52': 134, 'Choa Chu Kang St 53': 135, 'Choa Chu Kang St 54': 136, 'Choa Chu Kang St 62': 137, 'Choa Chu Kang St 64': 138, 'Circuit Rd': 139, 'Clarence Lane': 140, 'Clementi Ave 1': 141, 'Clementi Ave 2': 142, 'Clementi Ave 3': 143, 'Clementi Ave 4': 144, 'Clementi Ave 5': 145, 'Clementi Ave 6': 146, 'Clementi St 11': 147, 'Clementi St 12': 148, 'Clementi St 13': 149, 'Clementi St 14': 150, 'Clementi West St 1': 151, 'Clementi West St 2': 152, 'Compassvale Bow': 153, 'Compassvale Cres': 154, 'Compassvale Dr': 155, 'Compassvale Lane': 156, 'Compassvale Link': 157, 'Compassvale Rd': 158, 'Compassvale St': 159, 'Compassvale Walk': 160, 'Corporation Dr': 161, 'Crawford Lane': 162, 'Dakota Cres': 163, 'Dawson Rd': 164, 'Delta Ave': 165, 'Depot Rd': 166, 'Dorset Rd': 167, 'Dover Cl East': 168, 'Dover Cres': 169, 'Dover Rd': 170, 'East Coast Rd': 171, 'Edgedale Plains': 172, 'Edgefield Plains': 173, 'Elias Rd': 174, 'Empress Rd': 175, 'Eunos Cres': 176, 'Eunos Rd 5': 177, 'Everton Pk': 178, 'Fajar Rd': 179, 'Farrer Pk Rd': 180, 'Farrer Rd': 181, 'Fernvale Lane': 182, 'Fernvale Link': 183, 'Fernvale Rd': 184, 'Fernvale St': 185, 'French Rd': 186, 'Gangsa Rd': 187, 'Geylang Bahru': 188, 'Geylang East Ave 1': 189, 'Geylang East Ave 2': 190, 'Geylang East Ctrl': 191, 'Geylang Serai': 192, 'Ghim Moh Link': 193, 'Ghim Moh Rd': 194, 'Gloucester Rd': 195, 'Haig Rd': 196, 'Havelock Rd': 197, 'Henderson Cres': 198, 'Henderson Rd': 199, 'Hillview Ave': 200, 'Ho Ching Rd': 201, 'Holland Ave': 202, 'Holland Cl': 203, 'Holland Dr': 204, 'Hougang Ave 1': 205, 'Hougang Ave 10': 206, 'Hougang Ave 2': 207, 'Hougang Ave 3': 208, 'Hougang Ave 4': 209, 'Hougang Ave 5': 210, 'Hougang Ave 6': 211, 'Hougang Ave 7': 212, 'Hougang Ave 8': 213, 'Hougang Ave 9': 214, 'Hougang Ctrl': 215, 'Hougang St 11': 216, 'Hougang St 21': 217, 'Hougang St 22': 218, 'Hougang St 31': 219, 'Hougang St 32': 220, 'Hougang St 51': 221, 'Hougang St 52': 222, 'Hougang St 61': 223, 'Hougang St 91': 224, 'Hougang St 92': 225, 'Hoy Fatt Rd': 226, 'Hu Ching Rd': 227, 'Indus Rd': 228, 'Jelapang Rd': 229, 'Jelebu Rd': 230, 'Jellicoe Rd': 231, 'Jln Bahagia': 232, 'Jln Batu': 233, 'Jln Berseh': 234, 'Jln Bt Ho Swee': 235, 'Jln Bt Merah': 236, 'Jln Damai': 237, 'Jln Dua': 238, 'Jln Dusun': 239, 'Jln Kayu': 240, 'Jln Klinik': 241, 'Jln Kukoh': 242, "Jln Ma'Mor": 243, 'Jln Membina': 244, 'Jln Membina Barat': 245, 'Jln Pasar Baru': 246, 'Jln Rajah': 247, 'Jln Rumah Tinggi': 248, 'Jln Teck Whye': 249, 'Jln Tenaga': 250, 'Jln Tenteram': 251, 'Jln Tiga': 252, 'Joo Chiat Rd': 253, 'Joo Seng Rd': 254, 'Jurong East Ave 1': 255, 'Jurong East St 13': 256, 'Jurong East St 21': 257, 'Jurong East St 24': 258, 'Jurong East St 31': 259, 'Jurong East St 32': 260, 'Jurong West Ave 1': 261, 'Jurong West Ave 3': 262, 'Jurong West Ave 5': 263, 'Jurong West Ctrl 1': 264, 'Jurong West Ctrl 3': 265, 'Jurong West St 24': 266, 'Jurong West St 25': 267, 'Jurong West St 41': 268, 'Jurong West St 42': 269, 'Jurong West St 51': 270, 'Jurong West St 52': 271, 'Jurong West St 61': 272, 'Jurong West St 62': 273, 'Jurong West St 64': 274, 'Jurong West St 65': 275, 'Jurong West St 71': 276, 'Jurong West St 72': 277, 'Jurong West St 73': 278, 'Jurong West St 74': 279, 'Jurong West St 75': 280, 'Jurong West St 81': 281, 'Jurong West St 91': 282, 'Jurong West St 92': 283, 'Jurong West St 93': 284, 'Kallang Bahru': 285, 'Kang Ching Rd': 286, 'Keat Hong Cl': 287, 'Keat Hong Link': 288, 'Kelantan Rd': 289, 'Kent Rd': 290, 'Kg Arang Rd': 291, 'Kg Bahru Hill': 292, 'Kg Kayu Rd': 293, 'Kim Cheng St': 294, 'Kim Keat Ave': 295, 'Kim Keat Link': 296, 'Kim Pong Rd': 297, 'Kim Tian Pl': 298, 'Kim Tian Rd': 299, "King George'S Ave": 300, 'Klang Lane': 301, 'Kreta Ayer Rd': 302, 'Lengkok Bahru': 303, 'Lengkong Tiga': 304, 'Lim Chu Kang Rd': 305, 'Lim Liak St': 306, 'Lompang Rd': 307, 'Lor 1 Toa Payoh': 308, 'Lor 1A Toa Payoh': 309, 'Lor 2 Toa Payoh': 310, 'Lor 3 Geylang': 311, 'Lor 3 Toa Payoh': 312, 'Lor 4 Toa Payoh': 313, 'Lor 5 Toa Payoh': 314, 'Lor 6 Toa Payoh': 315, 'Lor 7 Toa Payoh': 316, 'Lor 8 Toa Payoh': 317, 'Lor Ah Soo': 318, 'Lor Lew Lian': 319, 'Lor Limau': 320, 'Lower Delta Rd': 321, 'Macpherson Lane': 322, 'Margaret Dr': 323, 'Marine Cres': 324, 'Marine Dr': 325, 'Marine Parade Ctrl': 326, 'Marine Ter': 327, 'Marsiling Cres': 328, 'Marsiling Dr': 329, 'Marsiling Lane': 330, 'Marsiling Rd': 331, 'Marsiling Rise': 332, 'Mcnair Rd': 333, 'Mei Ling St': 334, 'Moh Guan Ter': 335, 'Montreal Dr': 336, 'Montreal Link': 337, 'Moulmein Rd': 338, 'New Mkt Rd': 339, 'New Upp Changi Rd': 340, 'Nile Rd': 341, 'Nth Bridge Rd': 342, 'Old Airport Rd': 343, 'Outram Hill': 344, 'Outram Pk': 345, 'Owen Rd': 346, 'Pandan Gdns': 347, 'Pasir Ris Dr 1': 348, 'Pasir Ris Dr 10': 349, 'Pasir Ris Dr 3': 350, 'Pasir Ris Dr 4': 351, 'Pasir Ris Dr 6': 352, 'Pasir Ris St 11': 353, 'Pasir Ris St 12': 354, 'Pasir Ris St 13': 355, 'Pasir Ris St 21': 356, 'Pasir Ris St 41': 357, 'Pasir Ris St 51': 358, 'Pasir Ris St 52': 359, 'Pasir Ris St 53': 360, 'Pasir Ris St 71': 361, 'Pasir Ris St 72': 362, 'Paya Lebar Way': 363, 'Pending Rd': 364, 'Petir Rd': 365, 'Pine Cl': 366, 'Pipit Rd': 367, 'Potong Pasir Ave 1': 368, 'Potong Pasir Ave 2': 369, 'Potong Pasir Ave 3': 370, 'Punggol Ctrl': 371, 'Punggol Dr': 372, 'Punggol East': 373, 'Punggol Field': 374, 'Punggol Field Walk': 375, 'Punggol Pl': 376, 'Punggol Rd': 377, 'Punggol Walk': 378, 'Punggol Way': 379, 'Queen St': 380, "Queen'S Cl": 381, "Queen'S Rd": 382, 'Queensway': 383, 'Race Course Rd': 384, 'Redhill Cl': 385, 'Redhill Lane': 386, 'Redhill Rd': 387, 'Rivervale Cres': 388, 'Rivervale Dr': 389, 'Rivervale St': 390, 'Rivervale Walk': 391, 'Rochor Rd': 392, 'Rowell Rd': 393, 'Sago Lane': 394, 'Saujana Rd': 395, 'Segar Rd': 396, 'Selegie Rd': 397, 'Seletar West Farmway 6': 398, 'Sembawang Cl': 399, 'Sembawang Cres': 400, 'Sembawang Dr': 401, 'Sembawang Rd': 402, 'Sembawang Vista': 403, 'Sembawang Way': 404, 'Seng Poh Rd': 405, 'Sengkang Ctrl': 406, 'Sengkang East Ave': 407, 'Sengkang East Rd': 408, 'Sengkang East Way': 409, 'Sengkang West Ave': 410, 'Sengkang West Way': 411, 'Senja Link': 412, 'Senja Rd': 413, 'Serangoon Ave 1': 414, 'Serangoon Ave 2': 415, 'Serangoon Ave 3': 416, 'Serangoon Ave 4': 417, 'Serangoon Ctrl': 418, 'Serangoon Ctrl Dr': 419, 'Serangoon Nth Ave 1': 420, 'Serangoon Nth Ave 2': 421, 'Serangoon Nth Ave 3': 422, 'Serangoon Nth Ave 4': 423, 'Short St': 424, 'Shunfu Rd': 425, 'Silat Ave': 426, 'Simei Lane': 427, 'Simei Rd': 428, 'Simei St 1': 429, 'Simei St 2': 430, 'Simei St 4': 431, 'Simei St 5': 432, 'Sims Ave': 433, 'Sims Dr': 434, 'Sims Pl': 435, 'Sin Ming Ave': 436, 'Sin Ming Rd': 437, 'Smith St': 438, 'Spottiswoode Pk Rd': 439, "St. George'S Lane": 440, "St. George'S Rd": 441, 'Stirling Rd': 442, 'Strathmore Ave': 443, 'Sumang Lane': 444, 'Sumang Link': 445, 'Sumang Walk': 446, 'Tah Ching Rd': 447, 'Taman Ho Swee': 448, 'Tampines Ave 1': 449, 'Tampines Ave 4': 450, 'Tampines Ave 5': 451, 'Tampines Ave 7': 452, 'Tampines Ave 8': 453, 'Tampines Ave 9': 454, 'Tampines Ctrl 1': 455, 'Tampines Ctrl 7': 456, 'Tampines Ctrl 8': 457, 'Tampines St 11': 458, 'Tampines St 12': 459, 'Tampines St 21': 460, 'Tampines St 22': 461, 'Tampines St 23': 462, 'Tampines St 24': 463, 'Tampines St 32': 464, 'Tampines St 33': 465, 'Tampines St 34': 466, 'Tampines St 41': 467, 'Tampines St 42': 468, 'Tampines St 43': 469, 'Tampines St 44': 470, 'Tampines St 45': 471, 'Tampines St 61': 472, 'Tampines St 71': 473, 'Tampines St 72': 474, 'Tampines St 81': 475, 'Tampines St 82': 476, 'Tampines St 83': 477, 'Tampines St 84': 478, 'Tampines St 86': 479, 'Tampines St 91': 480, 'Tanglin Halt Rd': 481, 'Tao Ching Rd': 482, 'Teban Gdns Rd': 483, 'Teck Whye Ave': 484, 'Teck Whye Cres': 485, 'Teck Whye Lane': 486, 'Telok Blangah Cres': 487, 'Telok Blangah Dr': 488, 'Telok Blangah Hts': 489, 'Telok Blangah Rise': 490, 'Telok Blangah St 31': 491, 'Telok Blangah Way': 492, 'Tessensohn Rd': 493, 'Tg Pagar Plaza': 494, 'Tiong Bahru Rd': 495, 'Toa Payoh Ctrl': 496, 'Toa Payoh East': 497, 'Toa Payoh Nth': 498, 'Toh Guan Rd': 499, 'Toh Yi Dr': 500, 'Towner Rd': 501, 'Ubi Ave 1': 502, 'Upp Aljunied Lane': 503, 'Upp Boon Keng Rd': 504, 'Upp Cross St': 505, 'Upp Serangoon Cres': 506, 'Upp Serangoon Rd': 507, 'Upp Serangoon View': 508, 'Veerasamy Rd': 509, 'Waterloo St': 510, 'Wellington Circle': 511, 'West Coast Dr': 512, 'West Coast Rd': 513, 'Whampoa Dr': 514, 'Whampoa Rd': 515, 'Whampoa Sth': 516, 'Whampoa West': 517, 'Woodlands Ave 1': 518, 'Woodlands Ave 3': 519, 'Woodlands Ave 4': 520, 'Woodlands Ave 5': 521, 'Woodlands Ave 6': 522, 'Woodlands Ave 9': 523, 'Woodlands Circle': 524, 'Woodlands Cres': 525, 'Woodlands Ctr Rd': 526, 'Woodlands Dr 14': 527, 'Woodlands Dr 16': 528, 'Woodlands Dr 40': 529, 'Woodlands Dr 42': 530, 'Woodlands Dr 44': 531, 'Woodlands Dr 50': 532, 'Woodlands Dr 52': 533, 'Woodlands Dr 53': 534, 'Woodlands Dr 60': 535, 'Woodlands Dr 62': 536, 'Woodlands Dr 70': 537, 'Woodlands Dr 71': 538, 'Woodlands Dr 72': 539, 'Woodlands Dr 73': 540, 'Woodlands Dr 75': 541, 'Woodlands Ring Rd': 542, 'Woodlands Rise': 543, 'Woodlands St 11': 544, 'Woodlands St 13': 545, 'Woodlands St 31': 546, 'Woodlands St 32': 547, 'Woodlands St 41': 548, 'Woodlands St 81': 549, 'Woodlands St 82': 550, 'Woodlands St 83': 551, 'Yishun Ave 1': 552, 'Yishun Ave 11': 553, 'Yishun Ave 2': 554, 'Yishun Ave 3': 555, 'Yishun Ave 4': 556, 'Yishun Ave 5': 557, 'Yishun Ave 6': 558, 'Yishun Ave 7': 559, 'Yishun Ave 9': 560, 'Yishun Ctrl': 561, 'Yishun Ctrl 1': 562, 'Yishun Ring Rd': 563, 'Yishun St 11': 564, 'Yishun St 20': 565, 'Yishun St 21': 566, 'Yishun St 22': 567, 'Yishun St 31': 568, 'Yishun St 41': 569, 'Yishun St 43': 570, 'Yishun St 51': 571, 'Yishun St 61': 572, 'Yishun St 71': 573, 'Yishun St 72': 574, 'Yishun St 81': 575, 'Yuan Ching Rd': 576, 'Yung An Rd': 577, 'Yung Ho Rd': 578, 'Yung Kuang Rd': 579, 'Yung Loh Rd': 580, 'Yung Ping Rd': 581, 'Yung Sheng Rd': 582, 'Zion Rd': 583}
+        res = values[user_input]
+    return res
+
+if 'pred_price' not in st.session_state:
+    st.session_state['pred_price'] = 'False'   
+
+#Streamlit Configuration
+st.set_page_config(page_title="Singapore Resale Flat prices predictor", layout="wide", initial_sidebar_state="expanded", menu_items=None)
+st.markdown("<h2 style='text-align: center; color: Red;'>🏬 Singapore Resale Flat prices predictor</h2>", unsafe_allow_html=True)
+st.write("")
+st.write("")
+with st.form("vcform", border=True):
+    col1,col2 = st.columns([1,1])
+    with col1:
+        town_list = ['Ang Mo Kio', 'Bedok', 'Bishan', 'Bukit Batok', 'Bukit Merah','Bukit Timah', 'Central Area', 'Choa Chu Kang', 'Clementi','Geylang', 'Hougang', 'Jurong East', 'Jurong West',
+                        'Kallang/Whampoa', 'Marine Parade', 'Queenstown', 'Sengkang','Serangoon', 'Tampines', 'Toa Payoh', 'Woodlands', 'Yishun',
+                        'Lim Chu Kang', 'Sembawang', 'Bukit Panjang', 'Pasir Ris','Punggol']
+        Town = st.selectbox("Select Town",options= town_list )             
+        flattype_list = ['1 Room', '2 Room','3 Room', '4 Room', '5 Room',  'Executive','Multi Generation']           
+        flat_type = st.selectbox("Select Flat type",options=flattype_list)
+        Street_name_list = ['Ang Mo Kio Ave 1', 'Ang Mo Kio Ave 3', 'Ang Mo Kio Ave 4','Ang Mo Kio Ave 10', 'Ang Mo Kio Ave 5', 'Ang Mo Kio Ave 8','Ang Mo Kio Ave 6', 'Ang Mo Kio Ave 9', 'Ang Mo Kio Ave 2',
+        'Bedok Reservoir Rd', 'Bedok Nth St 3', 'Bedok Sth Rd','New Upp Changi Rd', 'Bedok Nth Rd', 'Bedok Sth Ave 1', 'Chai Chee Rd', 'Chai Chee Dr', 'Bedok Nth Ave 4',
+        'Bedok Sth Ave 3', 'Bedok Sth Ave 2', 'Bedok Nth St 2','Bedok Nth St 4', 'Bedok Nth Ave 2', 'Bedok Nth Ave 3','Bedok Nth Ave 1', 'Bedok Nth St 1', 'Chai Chee St', 'Sin Ming Rd',
+        'Shunfu Rd', 'Bt Batok St 11', 'Bt Batok West Ave 8','Bt Batok West Ave 6', 'Bt Batok St 21', 'Bt Batok East Ave 5','Bt Batok East Ave 4', 'Hillview Ave', 'Bt Batok Ctrl',
+        'Bt Batok St 31', 'Bt Batok East Ave 3', 'Taman Ho Swee','Telok Blangah Cres', 'Beo Cres', 'Telok Blangah Dr', 'Depot Rd','Telok Blangah Rise', 'Jln Bt Merah', 'Henderson Rd', 'Indus Rd',
+        'Bt Merah View', 'Henderson Cres', 'Bt Purmei Rd','Telok Blangah Hts', 'Everton Pk', 'Kg Bahru Hill', 'Redhill Cl','Hoy Fatt Rd', 'Havelock Rd', 'Jln Klinik', 'Jln Rumah Tinggi',
+        'Jln Bt Ho Swee', 'Kim Cheng St', 'Moh Guan Ter','Telok Blangah Way', 'Kim Tian Rd', 'Kim Tian Pl', 'Empress Rd',"Queen'S Rd", 'Farrer Rd', 'Jln Kukoh', 'Outram Pk', 'Short St',
+        'Selegie Rd', 'Upp Cross St', 'Waterloo St', 'Queen St','Buffalo Rd', 'Rowell Rd', 'Rochor Rd', 'Bain St', 'Smith St','Veerasamy Rd', 'Teck Whye Ave', 'Teck Whye Lane',
+        'Clementi Ave 3', 'West Coast Dr', 'Clementi Ave 2','Clementi Ave 5', 'Clementi Ave 4', 'Clementi Ave 1','West Coast Rd', 'Clementi West St 1', 'Clementi West St 2',
+        'Clementi St 13', "C'Wealth Ave West", 'Clementi Ave 6','Clementi St 14', 'Circuit Rd', 'Macpherson Lane','Jln Pasar Baru', 'Geylang Serai', 'Eunos Cres', 'Sims Dr',
+        'Aljunied Cres', 'Geylang East Ave 1', 'Dakota Cres', 'Pine Cl','Haig Rd', 'Balam Rd', 'Jln Dua', 'Geylang East Ctrl','Eunos Rd 5', 'Hougang Ave 3', 'Hougang Ave 5', 'Hougang Ave 1',
+        'Hougang St 22', 'Hougang Ave 10', 'Lor Ah Soo', 'Hougang St 11','Hougang Ave 7', 'Hougang St 21', 'Teban Gdns Rd','Jurong East Ave 1', 'Jurong East St 32', 'Jurong East St 13',
+        'Jurong East St 21', 'Jurong East St 24', 'Jurong East St 31','Pandan Gdns', 'Yung Kuang Rd', 'Ho Ching Rd', 'Hu Ching Rd','Boon Lay Dr', 'Boon Lay Ave', 'Boon Lay Pl', 'Jurong West St 52',
+        'Jurong West St 41', 'Jurong West Ave 1', 'Jurong West St 42','Jln Batu', "St. George'S Rd", 'Nth Bridge Rd', 'French Rd','Beach Rd', 'Whampoa Dr', 'Upp Boon Keng Rd', 'Bendemeer Rd',
+        'Whampoa West', 'Lor Limau', 'Kallang Bahru', 'Geylang Bahru','Dorset Rd', 'Owen Rd', 'Kg Arang Rd', 'Jln Bahagia','Moulmein Rd', 'Towner Rd', 'Jln Rajah', 'Kent Rd', 'Ah Hood Rd',
+        "King George'S Ave", 'Crawford Lane', 'Marine Cres', 'Marine Dr','Marine Ter', "C'Wealth Cl", "C'Wealth Dr", 'Tanglin Halt Rd',"C'Wealth Cres", 'Dover Rd', 'Margaret Dr', 'Ghim Moh Rd',
+        'Dover Cres', 'Stirling Rd', 'Mei Ling St', 'Holland Cl','Holland Ave', 'Holland Dr', 'Dover Cl East','Seletar West Farmway 6', 'Lor Lew Lian', 'Serangoon Nth Ave 1',
+        'Serangoon Ave 2', 'Serangoon Ave 4', 'Serangoon Ctrl','Tampines St 11', 'Tampines St 21', 'Tampines St 91','Tampines St 81', 'Tampines Ave 4', 'Tampines St 22',
+        'Tampines St 12', 'Tampines St 23', 'Tampines St 24','Tampines St 41', 'Tampines St 82', 'Tampines St 83','Tampines Ave 5', 'Lor 2 Toa Payoh', 'Lor 8 Toa Payoh',
+        'Lor 1 Toa Payoh', 'Lor 5 Toa Payoh', 'Lor 3 Toa Payoh', 'Lor 7 Toa Payoh', 'Toa Payoh East', 'Lor 4 Toa Payoh', 'Toa Payoh Ctrl', 'Toa Payoh Nth', 'Potong Pasir Ave 3',
+        'Potong Pasir Ave 1', 'Upp Aljunied Lane', 'Joo Seng Rd','Marsiling Lane', 'Marsiling Dr', 'Marsiling Rise','Marsiling Cres', 'Woodlands Ctr Rd', 'Woodlands St 13',
+        'Woodlands St 11', 'Yishun Ring Rd', 'Yishun Ave 5','Yishun St 72', 'Yishun St 11', 'Yishun St 21', 'Yishun St 22','Yishun Ave 3', 'Chai Chee Ave', 'Zion Rd', 'Lengkok Bahru',
+        'Spottiswoode Pk Rd', 'New Mkt Rd', 'Tg Pagar Plaza','Kelantan Rd', 'Paya Lebar Way', 'Ubi Ave 1', 'Sims Ave','Yung Ping Rd', 'Tao Ching Rd', 'Gloucester Rd', 'Boon Keng Rd',
+        'Whampoa Sth', 'Cambridge Rd', 'Tampines St 42', 'Lor 6 Toa Payoh','Kim Keat Ave', 'Yishun Ave 6', 'Yishun Ave 9', 'Yishun St 71','Bt Batok St 32', 'Silat Ave', 'Tiong Bahru Rd', 'Sago Lane',
+        "St. George'S Lane", 'Lim Chu Kang Rd', "C'Wealth Ave","Queen'S Cl", 'Serangoon Ave 3', 'Potong Pasir Ave 2','Woodlands Ave 1', 'Yishun Ave 4', 'Lower Delta Rd', 'Nile Rd',
+        'Jln Membina Barat', 'Jln Berseh', 'Chander Rd', 'Cassia Cres','Old Airport Rd', 'Aljunied Rd', 'Buangkok Sth Farmway 1','Bt Batok St 33', 'Alexandra Rd', 'Chin Swee Rd', 'Sims Pl',
+        'Hougang Ave 2', 'Hougang Ave 8', 'Sembawang Rd', 'Simei St 1', 'Bt Batok St 34', 'Bt Merah Ctrl', 'Lim Liak St', 'Jln Tenteram','Woodlands St 32', 'Sin Ming Ave', 'Bt Batok St 52', 'Delta Ave',
+        'Pipit Rd', 'Hougang Ave 4', 'Queensway', 'Yishun St 61','Bishan St 12', "Jln Ma'Mor", 'Tampines St 44', 'Tampines St 43','Bishan St 13', 'Jln Dusun', 'Yishun Ave 2', 'Joo Chiat Rd',
+        'East Coast Rd', 'Redhill Rd', 'Kim Pong Rd', 'Race Course Rd','Kreta Ayer Rd', 'Hougang St 61', 'Tessensohn Rd', 'Marsiling Rd','Yishun St 81', 'Bt Batok St 51', 'Bt Batok West Ave 4',
+        'Bt Batok West Ave 2', 'Jurong West St 91', 'Jurong West St 81','Gangsa Rd', 'Mcnair Rd', 'Simei St 4', 'Yishun Ave 7','Serangoon Nth Ave 2', 'Yishun Ave 11', 'Bangkit Rd',
+        'Jurong West St 73', 'Outram Hill', 'Hougang Ave 6','Pasir Ris St 12', 'Pending Rd', 'Petir Rd', 'Lor 3 Geylang','Bishan St 11', 'Pasir Ris Dr 6', 'Jurong West St 92',
+        'Pasir Ris St 11', 'Yishun Ctrl', 'Bishan St 22', 'Simei Rd','Tampines St 84', 'Bt Panjang Ring Rd', 'Jurong West St 93','Fajar Rd', 'Woodlands St 81', 'Choa Chu Kang Ctrl',
+        'Pasir Ris St 51', 'Hougang St 52', 'Cashew Rd', 'Toh Yi Dr', 'Hougang Ctrl', 'Kg Kayu Rd', 'Tampines Ave 8', 'Tampines St 45','Simei St 2', 'Woodlands Ave 3', 'Lengkong Tiga', 'Bishan St 23',
+        'Woodlands St 82', 'Serangoon Nth Ave 4', 'Serangoon Ctrl Dr','Bright Hill Dr', 'Saujana Rd', 'Choa Chu Kang Ave 3','Tampines Ave 9', 'Jurong West St 51', 'Yung Ho Rd',
+        'Serangoon Ave 1', 'Pasir Ris St 41', 'Geylang East Ave 2','Choa Chu Kang Ave 2', 'Kim Keat Link', 'Pasir Ris Dr 4','Pasir Ris St 21', 'Seng Poh Rd', 'Hougang St 51',
+        'Jurong West St 72', 'Jurong West St 71', 'Pasir Ris St 52','Tampines St 32', 'Choa Chu Kang Ave 4', 'Choa Chu Kang Loop','Jln Tenaga', 'Tampines Ctrl 1', 'Tampines St 33',
+        'Bt Batok West Ave 7', 'Jurong West Ave 5', 'Tampines Ave 7','Woodlands St 83', 'Yishun Ctrl 1', 'Choa Chu Kang Ave 1','Woodlands St 31', 'Bt Merah Lane 1', 'Bishan St 24',
+        'Woodlands St 41', 'Jurong West St 74', 'Pasir Ris Dr 1','Pasir Ris St 13', 'Pasir Ris Dr 10', 'Choa Chu Kang St 52','Choa Chu Kang St 51', 'Pasir Ris St 53', 'Choa Chu Kang Nth 5',
+        'Elias Rd', 'Jln Damai', 'Pasir Ris St 72', 'Pasir Ris St 71','Choa Chu Kang St 62', 'Woodlands Ave 5', 'Woodlands Dr 50','Choa Chu Kang St 53', 'Upp Serangoon Rd', 'Jurong West St 75',       'Strathmore Ave', 'Ang Mo Kio St 31', 'Tampines St 34',
+        'Whampoa Rd', 'Pasir Ris Dr 3', 'Clarence Lane', 'Yung An Rd','Choa Chu Kang Nth 6', 'Ang Mo Kio St 21', 'Woodlands Ave 4','Choa Chu Kang Nth 7', 'Ang Mo Kio St 11', 'Woodlands Ave 9',
+        'Yung Loh Rd', 'Choa Chu Kang Dr', 'Choa Chu Kang St 54','Redhill Lane', 'Kang Ching Rd', 'Tah Ching Rd', 'Simei St 5','Woodlands Dr 40', 'Woodlands Dr 70', 'Tampines St 71',       'Woodlands Dr 42', 'Serangoon Nth Ave 3', 'Jelapang Rd',
+        'Bt Batok St 22', 'Hougang St 91', 'Woodlands Ave 6','Tampines St 72', 'Woodlands Circle', 'Corporation Dr','Lompang Rd', 'Woodlands Dr 72', 'Choa Chu Kang St 64',       'Bt Batok St 24', 'Jln Teck Whye', 'Woodlands Cres',
+        'Woodlands Dr 60', 'Changi Village Rd', 'Bt Batok St 25','Hougang Ave 9', 'Jurong West Ctrl 1', 'Woodlands Ring Rd','Choa Chu Kang Ave 5', 'Toh Guan Rd', 'Jurong West St 61',       'Woodlands Dr 14', 'Hougang St 92', 'Choa Chu Kang Cres',
+        'Sembawang Cl', 'Canberra Rd', 'Sembawang Cres', 'Sembawang Vista','Compassvale Walk', 'Rivervale St', 'Woodlands Dr 62','Sembawang Dr', 'Woodlands Dr 53', 'Woodlands Dr 52',       'Rivervale Walk', 'Compassvale Lane', 'Rivervale Dr', 'Senja Rd',
+        'Jurong West St 65', 'Rivervale Cres', 'Woodlands Dr 44','Compassvale Dr', 'Woodlands Dr 16', 'Compassvale Rd','Woodlands Dr 73', 'Hougang St 31', 'Jurong West St 64',       'Woodlands Dr 71', 'Yishun St 20', 'Admiralty Dr',
+        'Compassvale St', 'Bedok Reservoir View', 'Yung Sheng Rd','Admiralty Link', 'Sengkang East Way', 'Ang Mo Kio St 32','Ang Mo Kio St 52', 'Boon Tiong Rd', 'Jurong West St 62',       'Anchorvale Link', 'Canberra Link', 'Compassvale Cres',
+        'Clementi St 12', 'Montreal Dr', 'Wellington Circle','Sengkang East Rd', 'Jurong West Ave 3', 'Anchorvale Lane','Senja Link', 'Edgefield Plains', 'Anchorvale Dr', 'Segar Rd',       'Farrer Pk Rd', 'Punggol Field', 'Edgedale Plains',
+        'Anchorvale Rd', 'Cantonment Cl', 'Jln Membina', 'Fernvale Lane','Jurong West St 25', 'Clementi St 11', 'Punggol Field Walk','Klang Lane', 'Punggol Ctrl', 'Jelebu Rd', 'Buangkok Cres',       'Woodlands Dr 75', 'Bt Batok West Ave 5', 'Jellicoe Rd',
+        'Punggol Dr', 'Jurong West St 24', 'Sembawang Way', 'Fernvale Rd','Buangkok Link', 'Fernvale Link', 'Jln Tiga', 'Yuan Ching Rd','Compassvale Link', 'Marine Parade Ctrl', 'Compassvale Bow',       'Punggol Rd', 'Bedok Ctrl', 'Punggol East', 'Sengkang Ctrl',
+        'Tampines Ctrl 7', 'Sengkang West Ave', 'Punggol Pl','Cantonment Rd', 'Ghim Moh Link', 'Simei Lane', 'Yishun St 41','Telok Blangah St 31', 'Jln Kayu', 'Lor 1A Toa Payoh',       'Punggol Walk', 'Sengkang West Way', 'Buangkok Green',
+        'Punggol Way', 'Yishun St 31', 'Teck Whye Cres', 'Montreal Link','Upp Serangoon Cres', 'Sumang Link', 'Sengkang East Ave','Yishun Ave 1', 'Anchorvale Cres', 'Anchorvale St',       'Tampines Ctrl 8', 'Yishun St 51', 'Upp Serangoon View',
+        'Tampines Ave 1', 'Bedok Reservoir Cres', 'Ang Mo Kio St 61','Dawson Rd', 'Fernvale St', 'Hougang St 32', 'Tampines St 86','Sumang Walk', 'Choa Chu Kang Ave 7', 'Keat Hong Cl',       'Jurong West Ctrl 3', 'Keat Hong Link', 'Aljunied Ave 2',
+        'Sumang Lane', 'Canberra Cres', 'Canberra St', 'Ang Mo Kio St 44','Woodlands Rise', 'Canberra Walk', 'Ang Mo Kio St 51','Bt Batok East Ave 6', 'Bt Batok West Ave 9', 'Tampines St 61',       'Yishun St 43']
+        street_name = st.selectbox("Select Street name",options=Street_name_list)          
+        Storey_range_list =['10 To 12', '04 To 06', '07 To 09', '01 To 03', '13 To 15','19 To 21', '16 To 18', '25 To 27', '22 To 24', '28 To 30',
+        '31 To 33', '40 To 42', '37 To 39', '34 To 36', '06 To 10','01 To 05', '11 To 15', '16 To 20', '21 To 25', '26 To 30',
+        '36 To 40', '31 To 35', '46 To 48', '43 To 45', '49 To 51']
+        storey = st.selectbox("Select Storey Range",options=Storey_range_list)
+        flat_model_list = ['Improved', 'New Generation', 'Model A', 'Standard', 'Simplified','Model A-Maisonette', 'Apartment', 'Maisonette', 'Terrace',
+        '2-Room', 'Improved-Maisonette', 'Multi Generation','Premium Apartment', 'Adjoined Flat', 'Premium Maisonette','Model A2', 'Dbss', 'Type S1', 'Type S2', 'Premium Apartment Loft',
+        '3Gen']
+    with col2:
+        flat_model = st.selectbox("Select flat model",options = flat_model_list )
+        transaction_date = st.date_input("Input the transaction date",format="YYYY/MM/DD")
+        lease_date = st.date_input("Input the lease commencement date",format="YYYY/MM/DD")
+    col3,col4,col5 = st.columns([3.5,0.5,3.5])
+    with col4:
+        st.write("")
+        submit = st.form_submit_button(" Predict ")
+        if submit:
+            town_encoded = label_encode("town",Town)
+            flattype_encoded = label_encode("flat_type",flat_type)
+            street_encoded = label_encode("street",street_name)
+            storey_encoded = label_encode("storey",storey)
+            flatmod_encoded = label_encode("flatmodel",flat_model)
+            remaining_lease = 99*12 - (12 * (transaction_date.year - lease_date.year) + (transaction_date.month - lease_date.month))
+            today = date.today().strftime('%Y-%m-%d')
+            today_new =  datetime.strptime(today, '%Y-%m-%d').date()
+            building_age_today = (today_new-lease_date).days
+            input_val = [town_encoded,flattype_encoded,street_encoded,storey_encoded,flatmod_encoded,remaining_lease,building_age_today]
+            with open("standard_scalar.pkl",'rb') as f:
+                scr = pickle.load(f)   
+            input_arr = np.array([input_val])
+            input_sc = scr.transform(input_arr)
+            st.session_state.pred_price = decision.predict(input_sc)
+            with col5:
+                st.write('') 
+                st.write("Predicted Selling price is",st.session_state.pred_price[0])  
+
+
+                 
+                 
